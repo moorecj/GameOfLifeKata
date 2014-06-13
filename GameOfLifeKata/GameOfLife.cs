@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using StatsdClient;
 
 namespace GameOfLifeKata
 {
@@ -10,16 +12,20 @@ namespace GameOfLifeKata
     {
         private int[,] grid;
         private int totalGridLength;
+        private IStatsd client;
 
         public const int DEAD = 0;
         public const int ALIVE = 1;
+        public const String BIRTH_METRIC = "game-of-life.birth";
+        public const String DEATH_METRIC = "game-of-life.death";
 
-        public GameOfLife(int[,] grid)
+        public GameOfLife(int[,] grid, IStatsd client)
         {
             this.grid = new int[grid.GetLength(0), grid.GetLength(1)];
             totalGridLength = ( grid.GetLength(0) * grid.GetLength(1) );
             Array.Copy(grid, this.grid, totalGridLength);
-           
+
+            this.client = client;
         }
 
         public int[,] GetGrid()
@@ -27,7 +33,7 @@ namespace GameOfLifeKata
             return grid;
         }
 
-        public void Tick()
+        public virtual void Tick()
         {
             int[,] new_grid = new int[grid.GetLength(0),grid.GetLength(1)];
 
@@ -37,9 +43,11 @@ namespace GameOfLifeKata
             {
                 for (int col = 0; col < grid.GetLength(1); ++col)
                 {
-               
                     int neighborCount = GetNeighborCount(row, col);
-                        
+
+                    var wasAlive = new_grid[row, col] == ALIVE;
+                    var wasDead = new_grid[row, col] == DEAD;
+
                     if (neighborCount < 2)
                         new_grid[row, col] = DEAD;
                         
@@ -49,13 +57,19 @@ namespace GameOfLifeKata
                     if (neighborCount == 3)
                         new_grid[row, col] = ALIVE;
 
+                    var isDead = new_grid[row, col] == DEAD;   
+                    var isAlive = new_grid[row, col] == ALIVE;
 
+                    if (wasAlive && isDead)
+                        client.LogCount(DEATH_METRIC);
+
+                    if (wasDead && isAlive)
+                        client.LogCount(BIRTH_METRIC);
                 }
 
             }
 
             Array.Copy(new_grid, grid, totalGridLength);
-
         }
 
 

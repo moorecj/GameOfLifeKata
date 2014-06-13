@@ -11,6 +11,13 @@ namespace GameOfLifeKataTests
     [TestFixture]
     public class GameOfLifeTests
     {
+        private FakeStatsdClient client;
+
+        [SetUp]
+        public void Setup()
+        {
+            client = new FakeStatsdClient();
+        }
 
         [Test]
         public void EmptyGrid_ShouldReturnEmptyGrid()
@@ -18,8 +25,8 @@ namespace GameOfLifeKataTests
 
             int[,] emptyGrid = new int[,] { { GameOfLife.DEAD, GameOfLife.DEAD }, 
                                             { GameOfLife.DEAD, GameOfLife.DEAD } };
-            
-            GameOfLife game = new GameOfLife( emptyGrid );
+
+            GameOfLife game = new GameOfLife(emptyGrid, client);
 
             Assert.That( game.GetGrid(), Is.EquivalentTo( emptyGrid ));
         }
@@ -31,7 +38,7 @@ namespace GameOfLifeKataTests
             int[,] grid = new int[,] { { GameOfLife.DEAD, GameOfLife.DEAD }, 
                                        { GameOfLife.DEAD, GameOfLife.DEAD } };
 
-            GameOfLife game = new GameOfLife(grid);
+            GameOfLife game = new GameOfLife(grid, client);
 
             game.Tick();
 
@@ -45,7 +52,7 @@ namespace GameOfLifeKataTests
             int[,] grid = new int[,] { { GameOfLife.ALIVE, GameOfLife.DEAD }, 
                                        { GameOfLife.DEAD,  GameOfLife.DEAD } };
 
-            GameOfLife game = new GameOfLife(grid);
+            GameOfLife game = new GameOfLife(grid, client);
 
             game.Tick();
 
@@ -60,7 +67,7 @@ namespace GameOfLifeKataTests
             int[,] grid = new int[,] { { GameOfLife.ALIVE, GameOfLife.ALIVE }, 
                                        { GameOfLife.ALIVE,  GameOfLife.DEAD } };
 
-            GameOfLife game = new GameOfLife(grid);
+            GameOfLife game = new GameOfLife(grid, client);
 
             game.Tick();
 
@@ -75,7 +82,7 @@ namespace GameOfLifeKataTests
             int[,] grid = new int[,] { { GameOfLife.ALIVE, GameOfLife.ALIVE }, 
                                        { GameOfLife.ALIVE,  GameOfLife.ALIVE } };
 
-            GameOfLife game = new GameOfLife(grid);
+            GameOfLife game = new GameOfLife(grid, client);
 
             game.Tick();
 
@@ -91,7 +98,7 @@ namespace GameOfLifeKataTests
                                        { GameOfLife.DEAD,  GameOfLife.ALIVE, GameOfLife.ALIVE  },
                                        { GameOfLife.DEAD,  GameOfLife.DEAD,  GameOfLife.DEAD   }};
 
-            GameOfLife game = new GameOfLife(grid);
+            GameOfLife game = new GameOfLife(grid, client);
 
             game.Tick();
 
@@ -108,13 +115,81 @@ namespace GameOfLifeKataTests
                                        { GameOfLife.DEAD,  GameOfLife.DEAD, GameOfLife.DEAD  },
                                        { GameOfLife.DEAD,  GameOfLife.DEAD,  GameOfLife.DEAD  }};
 
-            GameOfLife game = new GameOfLife(grid);
+            GameOfLife game = new GameOfLife(grid, client);
 
             game.Tick();
 
             Assert.That(game.GetGrid()[1, 1], Is.EqualTo(GameOfLife.ALIVE));
 
         }
+
+
+        [Test]
+        public void OneTickOnAnEmptyGrid_ShouldResultinNoDataBeingLogged()
+        {
+
+            int[,] grid = new int[,] { { GameOfLife.DEAD, GameOfLife.DEAD }, 
+                                       { GameOfLife.DEAD, GameOfLife.DEAD } };
+
+            GameOfLife game = new GameOfLife(grid, client);
+
+            game.Tick();
+
+            client.AssertNothingLogged();
+        }
+
+        [Test]
+        public void OneTickOnAnAGridWithOneLiveCell_ShouldResultinOneDeathBeingLogged()
+        {
+
+            int[,] grid = new int[,] { { GameOfLife.ALIVE, GameOfLife.DEAD }, 
+                                       { GameOfLife.DEAD, GameOfLife.DEAD } };
+
+
+            GameOfLife game = new GameOfLife(grid, client);
+
+            game.Tick();
+
+            client.AssertDeathsLogged(1);
+        }
+
+      
+        [Test]
+        public void AnyDeadLiveCellWithExactlyThreeLiveNeighbors_ShoulLogsDeathsAndBirths()
+        {
+
+            int[,] grid = new int[,] { { GameOfLife.ALIVE, GameOfLife.ALIVE, GameOfLife.ALIVE  }, 
+                                       { GameOfLife.DEAD,  GameOfLife.DEAD, GameOfLife.DEAD  },
+                                       { GameOfLife.DEAD,  GameOfLife.DEAD,  GameOfLife.DEAD  }};
+
+            GameOfLife game = new GameOfLife(grid, client);
+
+            game.Tick();
+
+            client.AssertDeathsLogged(2);
+            client.AssertBirthsLogged(1);
+
+        }
+
+
+        [Test]
+        public void AnyLiveCellWithMoreThenThreeLiveNeighbors_ShouldLogsDeathsAndBirths()
+        {
+
+            int[,] grid = new int[,] { { GameOfLife.ALIVE, GameOfLife.ALIVE, GameOfLife.ALIVE  }, 
+                                       { GameOfLife.DEAD,  GameOfLife.ALIVE, GameOfLife.ALIVE  },
+                                       { GameOfLife.DEAD,  GameOfLife.DEAD,  GameOfLife.DEAD   }};
+
+            GameOfLife game = new GameOfLife(grid, client);
+
+            game.Tick();
+
+            client.AssertDeathsLogged(2);
+            client.AssertBirthsLogged(1);
+
+
+        }
+
 
 
 
